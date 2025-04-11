@@ -2,87 +2,107 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "@/components/ui/use-toast"
-import { fetchArweaveBalance } from "@/lib/arweave-integration"
+import { 
+  connectWallet,
+  disconnectWallet,
+  fetchArweaveBalance,
+  getTestMode
+} from "@/lib/arweave-integration"
 
 /**
  * Custom hook for Arweave wallet interaction
- * For demo purposes, this provides a mock wallet implementation
+ * Supports both test mode with mock tokens and real wallet mode
  */
 export function useArweaveWallet() {
   const [connected, setConnected] = useState(false)
   const [address, setAddress] = useState("")
   const [balance, setBalance] = useState("0")
+  const [isTestMode, setIsTestMode] = useState(true)
 
   // Check if window is defined (browser environment)
   const isClient = typeof window !== "undefined"
 
-  // Connect to Arweave wallet (mock for demo)
+  // Update test mode state
+  useEffect(() => {
+    setIsTestMode(getTestMode());
+  }, []);
+
+  // Connect to Arweave wallet (supports both test and real modes)
   const connect = useCallback(async () => {
     try {
-      // Generate a mock wallet address
-      const mockAddress = `mock_${Math.random().toString(36).substring(2, 15)}`
-      setAddress(mockAddress)
-      setConnected(true)
+      const walletAddress = await connectWallet();
+      setAddress(walletAddress);
+      setConnected(true);
 
-      // Set mock balance
-      setBalance("100.0")
+      // Fetch balance
+      const walletBalance = await fetchArweaveBalance(walletAddress);
+      setBalance(walletBalance);
 
+      const mode = isTestMode ? "Test" : "Real";
       toast({
-        title: "Demo Wallet Connected",
-        description: `Connected to demo wallet: ${mockAddress.slice(0, 6)}...${mockAddress.slice(-4)}`,
-      })
+        title: `${mode} Wallet Connected`,
+        description: `Connected to ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
+      });
     } catch (error) {
-      console.error("Error connecting to mock wallet:", error)
+      console.error("Error connecting to wallet:", error);
       toast({
         title: "Connection failed",
-        description: "Failed to connect to demo wallet",
+        description: error instanceof Error ? error.message : "Failed to connect wallet",
         variant: "destructive",
-      })
+      });
     }
-  }, [])
+  }, [isTestMode]);
 
-  // Disconnect from mock wallet
+  // Disconnect from wallet
   const disconnect = useCallback(async () => {
-    setConnected(false)
-    setAddress("")
-    setBalance("0")
+    try {
+      await disconnectWallet();
+      setConnected(false);
+      setAddress("");
+      setBalance("0");
 
-    toast({
-      title: "Wallet disconnected",
-      description: "Successfully disconnected from demo wallet",
-    })
-  }, [])
-
-  // Fetch wallet balance (mock implementation)
-  const fetchBalance = useCallback(async (walletAddress: string) => {
-    // Use a fixed balance for demo
-    setBalance("100.0")
-  }, [])
-
-  // Check if we should auto-connect on mount
-  useEffect(() => {
-    // Uncomment to auto-connect for demo purposes
-    // connect();
+      toast({
+        title: "Wallet disconnected",
+        description: "Successfully disconnected wallet",
+      });
+    } catch (error) {
+      console.error("Error disconnecting wallet:", error);
+      toast({
+        title: "Error disconnecting",
+        description: "Failed to disconnect wallet",
+        variant: "destructive",
+      });
+    }
   }, []);
+
+  // Fetch wallet balance
+  const fetchBalance = useCallback(async (walletAddress: string) => {
+    try {
+      const walletBalance = await fetchArweaveBalance(walletAddress);
+      setBalance(walletBalance);
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+  }, []);
+
+  // Refresh wallet state when test mode changes
+  useEffect(() => {
+    setIsTestMode(getTestMode());
+    if (connected) {
+      // Reconnect to refresh state
+      disconnect().then(() => connect());
+    }
+  }, [getTestMode, connected, connect, disconnect]);
 
   return {
     connected,
     address,
     balance,
+    isTestMode,
     connect,
     disconnect,
     fetchBalance
   }
 }
 
-// Add mock window.arweaveWallet type for compatibility with existing code
-declare global {
-  interface Window {
-    arweaveWallet?: {
-      connect: (permissions: string[]) => Promise<void>;
-      disconnect: () => Promise<void>;
-      getActiveAddress: () => Promise<string>;
-      sign: (transaction: any) => Promise<any>;
-    }
-  }
-}
+// Type definition already provided in arweave-integration.ts

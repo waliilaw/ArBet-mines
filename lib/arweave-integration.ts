@@ -1,11 +1,9 @@
 /**
  * This file contains Arweave integration functions for the mines game
- * For demo purposes, this uses a mock implementation that simulates transactions
- * No real Arweave transactions are made
+ * Supports both demo mode with mock tokens and real wallet mode
  */
 
 import Arweave from 'arweave';
-import { SmartWeaveNodeFactory } from 'redstone-smartweave';
 
 // Initialize Arweave client
 const arweave = Arweave.init({
@@ -14,55 +12,159 @@ const arweave = Arweave.init({
   protocol: 'https'
 });
 
-// Contract ID for the mines game (this can be the local test ID)
+// Contract ID for the mines game
 const MINES_GAME_CONTRACT_ID = process.env.NEXT_PUBLIC_MINES_CONTRACT_ID || 'kHWu_t4g9PFA2u_V9_w-JF8PjbH0YX-3e6WAvWhB2T0';
 
 // Store for mock data
 const mockGameStore = new Map();
 let mockUserAddress = '';
+let isTestMode = true; // Default to test mode
 
 /**
- * Places a bet (mock implementation for demo)
+ * Toggle between test mode and real wallet mode
+ * @param testMode Boolean indicating whether to use test mode
+ */
+export function setTestMode(testMode: boolean): void {
+  isTestMode = testMode;
+  console.log(`Mode set to: ${isTestMode ? 'TEST' : 'REAL WALLET'}`);
+}
+
+/**
+ * Get current mode (test or real)
+ * @returns Boolean indicating if in test mode
+ */
+export function getTestMode(): boolean {
+  return isTestMode;
+}
+
+/**
+ * Connects to Arweave wallet
+ * @returns Connected wallet address
+ */
+export async function connectWallet(): Promise<string> {
+  try {
+    if (isTestMode) {
+      // Generate mock user address for test mode
+      mockUserAddress = `mock_user_${Math.random().toString(36).substring(2, 9)}`;
+      console.log('Connected to mock wallet:', mockUserAddress);
+      return mockUserAddress;
+    } else {
+      // Connect to real Arweave wallet
+      if (typeof window !== 'undefined' && window.arweaveWallet) {
+        await window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
+        const address = await window.arweaveWallet.getActiveAddress();
+        console.log('Connected to real wallet:', address);
+        return address;
+      } else {
+        throw new Error('Arweave wallet extension not found. Please install ArConnect or another Arweave wallet.');
+      }
+    }
+  } catch (error) {
+    console.error('Error connecting to wallet:', error);
+    throw error;
+  }
+}
+
+/**
+ * Disconnects from Arweave wallet
+ */
+export async function disconnectWallet(): Promise<void> {
+  try {
+    if (!isTestMode && typeof window !== 'undefined' && window.arweaveWallet) {
+      await window.arweaveWallet.disconnect();
+    }
+    mockUserAddress = '';
+    console.log('Wallet disconnected');
+  } catch (error) {
+    console.error('Error disconnecting wallet:', error);
+    throw error;
+  }
+}
+
+/**
+ * Places a bet
  * @param amount Bet amount in AR
  * @param minesCount Number of mines
  * @returns Transaction ID and game ID
  */
 export async function placeBet(amount: string, minesCount: number): Promise<{ txId: string, gameId: string }> {
   try {
-    // Generate mock transaction and game IDs
-    const txId = `mock_tx_${Date.now()}`;
-    const gameId = `game_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Mock user address if no wallet is connected
-    const userAddress = mockUserAddress || `mock_user_${Math.random().toString(36).substring(2, 9)}`;
-    mockUserAddress = userAddress;
-    
-    // Store mock game data
-    mockGameStore.set(gameId, {
-      id: gameId,
-      txId,
-      player: userAddress,
-      betAmount: parseFloat(amount),
-      minesCount,
-      status: 'active',
-      createdAt: Date.now(),
-      revealedPositions: [],
-      minePositions: generateRandomMinePositions(25, minesCount),
-      result: null,
-      payout: 0
-    });
-    
-    console.log('Placed bet (mock):', { txId, gameId, amount, minesCount });
-    
-    return { txId, gameId };
+    if (isTestMode) {
+      return placeBetMock(amount, minesCount);
+    } else {
+      return placeBetReal(amount, minesCount);
+    }
   } catch (error) {
-    console.error('Error in mock placeBet:', error);
+    console.error('Error in placeBet:', error);
     throw error;
   }
 }
 
 /**
- * Claims winnings (mock implementation for demo)
+ * Places a bet (mock implementation for test mode)
+ * @param amount Bet amount in AR
+ * @param minesCount Number of mines
+ * @returns Transaction ID and game ID
+ */
+async function placeBetMock(amount: string, minesCount: number): Promise<{ txId: string, gameId: string }> {
+  // Generate mock transaction and game IDs
+  const txId = `mock_tx_${Date.now()}`;
+  const gameId = `game_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  
+  // Mock user address if no wallet is connected
+  const userAddress = mockUserAddress || `mock_user_${Math.random().toString(36).substring(2, 9)}`;
+  mockUserAddress = userAddress;
+  
+  // Store mock game data
+  mockGameStore.set(gameId, {
+    id: gameId,
+    txId,
+    player: userAddress,
+    betAmount: parseFloat(amount),
+    minesCount,
+    status: 'active',
+    createdAt: Date.now(),
+    revealedPositions: [],
+    minePositions: generateRandomMinePositions(25, minesCount),
+    result: null,
+    payout: 0
+  });
+  
+  console.log('Placed bet (mock):', { txId, gameId, amount, minesCount });
+  
+  return { txId, gameId };
+}
+
+/**
+ * Places a bet with real wallet
+ * @param amount Bet amount in AR
+ * @param minesCount Number of mines
+ * @returns Transaction ID and game ID
+ */
+async function placeBetReal(amount: string, minesCount: number): Promise<{ txId: string, gameId: string }> {
+  if (typeof window === 'undefined' || !window.arweaveWallet) {
+    throw new Error('Arweave wallet not connected');
+  }
+  
+  try {
+    // In a real implementation, you would:
+    // 1. Create a transaction to the contract
+    // 2. Set appropriate tags
+    // 3. Sign and post the transaction
+
+    // For demo purposes, we'll use mock transaction flow but log a message
+    console.log('Would place real bet with Arweave wallet');
+    
+    // Reuse mock implementation for demo purposes
+    return placeBetMock(amount, minesCount);
+  } catch (error) {
+    console.error('Error in placeBetReal:', error);
+    throw error;
+  }
+}
+
+/**
+ * Claims winnings
  * @param gameId Game ID
  * @param amount Win amount in AR
  * @param revealedPositions Array of revealed positions
@@ -74,72 +176,179 @@ export async function claimWinnings(
   revealedPositions: number[]
 ): Promise<string> {
   try {
-    // Generate mock transaction ID
-    const txId = `mock_tx_${Date.now()}`;
-    
-    // Update mock game data
-    if (mockGameStore.has(gameId)) {
-      const game = mockGameStore.get(gameId);
-      game.status = 'completed';
-      game.result = 'win';
-      game.revealedPositions = revealedPositions;
-      game.payout = parseFloat(amount);
-      mockGameStore.set(gameId, game);
+    if (isTestMode) {
+      return claimWinningsMock(gameId, amount, revealedPositions);
+    } else {
+      return claimWinningsReal(gameId, amount, revealedPositions);
     }
-    
-    console.log('Claimed winnings (mock):', { txId, gameId, amount, revealedPositions });
-    
-    return txId;
   } catch (error) {
-    console.error('Error in mock claimWinnings:', error);
+    console.error('Error in claimWinnings:', error);
     throw error;
   }
 }
 
 /**
- * Fetches game history (mock implementation for demo)
- * @param address Wallet address (ignored in mock)
+ * Claims winnings (mock implementation for test mode)
+ * @param gameId Game ID
+ * @param amount Win amount in AR
+ * @param revealedPositions Array of revealed positions
+ * @returns Transaction ID
+ */
+async function claimWinningsMock(
+  gameId: string, 
+  amount: string, 
+  revealedPositions: number[]
+): Promise<string> {
+  // Generate mock transaction ID
+  const txId = `mock_tx_${Date.now()}`;
+  
+  // Update mock game data
+  if (mockGameStore.has(gameId)) {
+    const game = mockGameStore.get(gameId);
+    game.status = 'completed';
+    game.result = 'win';
+    game.revealedPositions = revealedPositions;
+    game.payout = parseFloat(amount);
+    mockGameStore.set(gameId, game);
+  }
+  
+  console.log('Claimed winnings (mock):', { txId, gameId, amount, revealedPositions });
+  
+  return txId;
+}
+
+/**
+ * Claims winnings with real wallet
+ * @param gameId Game ID
+ * @param amount Win amount in AR
+ * @param revealedPositions Array of revealed positions
+ * @returns Transaction ID
+ */
+async function claimWinningsReal(
+  gameId: string, 
+  amount: string, 
+  revealedPositions: number[]
+): Promise<string> {
+  if (typeof window === 'undefined' || !window.arweaveWallet) {
+    throw new Error('Arweave wallet not connected');
+  }
+  
+  try {
+    // In a real implementation, you would:
+    // 1. Create a transaction to the contract
+    // 2. Set appropriate tags
+    // 3. Sign and post the transaction
+
+    // For demo purposes, we'll use mock transaction flow but log a message
+    console.log('Would claim real winnings with Arweave wallet');
+    
+    // Reuse mock implementation for demo purposes
+    return claimWinningsMock(gameId, amount, revealedPositions);
+  } catch (error) {
+    console.error('Error in claimWinningsReal:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetches game history
+ * @param address Wallet address
  * @returns Array of game history items
  */
 export async function fetchGameHistory(address: string): Promise<any[]> {
   try {
-    // Use mock user address if provided address is empty
-    const userAddress = address || mockUserAddress;
-    
-    if (!userAddress) {
-      return [];
+    if (isTestMode) {
+      return fetchGameHistoryMock(address);
+    } else {
+      return fetchGameHistoryReal(address);
     }
-    
-    // Convert mock store to array
-    const history = Array.from(mockGameStore.values())
-      .filter(game => game.player === userAddress)
-      .map(game => ({
-        id: game.id,
-        txid: game.txId,
-        action: game.status === 'completed' ? 'ClaimWinnings' : 'PlaceBet',
-        betAmount: game.betAmount.toString(),
-        minesCount: game.minesCount,
-        result: game.result || 'active',
-        winAmount: game.payout.toString(),
-        revealedPositions: game.revealedPositions,
-        timestamp: game.createdAt
-      }));
-    
-    return history.sort((a, b) => b.timestamp - a.timestamp);
   } catch (error) {
-    console.error('Error in mock fetchGameHistory:', error);
+    console.error('Error in fetchGameHistory:', error);
     return [];
   }
 }
 
 /**
- * Fetches user balance (mock implementation for demo)
+ * Fetches game history (mock implementation for test mode)
  * @param address Wallet address (ignored in mock)
+ * @returns Array of game history items
+ */
+async function fetchGameHistoryMock(address: string): Promise<any[]> {
+  // Use mock user address if provided address is empty
+  const userAddress = address || mockUserAddress;
+  
+  if (!userAddress) {
+    return [];
+  }
+  
+  // Convert mock store to array
+  const history = Array.from(mockGameStore.values())
+    .filter(game => game.player === userAddress)
+    .map(game => ({
+      id: game.id,
+      txid: game.txId,
+      action: game.status === 'completed' ? 'ClaimWinnings' : 'PlaceBet',
+      betAmount: game.betAmount.toString(),
+      minesCount: game.minesCount,
+      result: game.result || 'active',
+      winAmount: game.payout.toString(),
+      revealedPositions: game.revealedPositions,
+      timestamp: game.createdAt
+    }));
+  
+  return history.sort((a, b) => b.timestamp - a.timestamp);
+}
+
+/**
+ * Fetches game history from real blockchain
+ * @param address Wallet address
+ * @returns Array of game history items
+ */
+async function fetchGameHistoryReal(address: string): Promise<any[]> {
+  try {
+    // In a real implementation, you would:
+    // 1. Query the contract or GraphQL endpoint
+    // 2. Format the results
+
+    // For demo purposes, we'll use mock history but log a message
+    console.log('Would fetch real game history from blockchain');
+    
+    // Reuse mock implementation for demo purposes
+    return fetchGameHistoryMock(address);
+  } catch (error) {
+    console.error('Error in fetchGameHistoryReal:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches user balance
+ * @param address Wallet address
  * @returns Balance in AR
  */
 export async function fetchArweaveBalance(address: string): Promise<string> {
-  // Return a mock balance
-  return '100.0';
+  try {
+    if (isTestMode) {
+      return '100.0'; // Return mock balance for test mode
+    } else {
+      // For real wallet mode, fetch actual balance
+      if (typeof window !== 'undefined' && window.arweaveWallet) {
+        try {
+          const addressToCheck = address || await window.arweaveWallet.getActiveAddress();
+          const winstonBalance = await arweave.wallets.getBalance(addressToCheck);
+          const arBalance = arweave.ar.winstonToAr(winstonBalance);
+          return arBalance;
+        } catch (error) {
+          console.error('Error fetching real balance:', error);
+          return '0.0';
+        }
+      }
+      return '0.0';
+    }
+  } catch (error) {
+    console.error('Error in fetchArweaveBalance:', error);
+    return '0.0';
+  }
 }
 
 /**
@@ -149,7 +358,7 @@ export async function fetchArweaveBalance(address: string): Promise<string> {
  * @returns Array of mine positions
  */
 function generateRandomMinePositions(totalTiles: number, minesCount: number): number[] {
-  const positions = [];
+  const positions: number[] = [];
   while (positions.length < minesCount) {
     const position = Math.floor(Math.random() * totalTiles);
     if (!positions.includes(position)) {
@@ -159,7 +368,7 @@ function generateRandomMinePositions(totalTiles: number, minesCount: number): nu
   return positions;
 }
 
-// Add mock wallet type definition for TypeScript
+// Add wallet type definition for TypeScript
 declare global {
   interface Window {
     arweaveWallet?: {
@@ -167,6 +376,7 @@ declare global {
       disconnect: () => Promise<void>;
       getActiveAddress: () => Promise<string>;
       sign: (transaction: any) => Promise<any>;
+      dispatch: (transaction: any) => Promise<{ id: string }>;
     };
   }
 }
