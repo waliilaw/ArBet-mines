@@ -55,20 +55,40 @@ export async function connectWallet(): Promise<string> {
       // Connect to real Arweave wallet
       if (typeof window !== 'undefined' && window.arweaveWallet) {
         try {
-          // Set timeout to prevent indefinite waiting if ArConnect extension freezes
-          const connectPromise = window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
+          // Wrap ArConnect operations in a custom try-catch to handle message channel errors
+          const safeArConnectOperation = async () => {
+            try {
+              // Set timeout to prevent indefinite waiting if ArConnect extension freezes
+              const connectPromise = window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
+              
+              // Set a timeout for wallet connection
+              const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => reject(new Error('Wallet connection timed out')), 5000);
+              });
+              
+              // Race the promises
+              await Promise.race([connectPromise, timeoutPromise]);
+              
+              // Small delay to ensure channel has time to process
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              const address = await window.arweaveWallet.getActiveAddress();
+              console.log('Connected to real wallet:', address);
+              return address;
+            } catch (innerErr: unknown) {
+              // Handle message channel errors specifically
+              if (innerErr instanceof Error && innerErr.message && (
+                  innerErr.message.includes('message channel closed') || 
+                  innerErr.message.includes('asynchronous response')
+              )) {
+                console.error('ArConnect message channel error:', innerErr);
+                throw new Error('ArConnect extension communication error. Please refresh the page and try again.');
+              }
+              throw innerErr;
+            }
+          };
           
-          // Set a timeout for wallet connection
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Wallet connection timed out')), 5000);
-          });
-          
-          // Race the promises
-          await Promise.race([connectPromise, timeoutPromise]);
-          
-          const address = await window.arweaveWallet.getActiveAddress();
-          console.log('Connected to real wallet:', address);
-          return address;
+          return await safeArConnectOperation();
         } catch (err) {
           console.error('Error connecting to ArConnect:', err);
           // Fallback to test mode if there's an issue with ArConnect
@@ -100,13 +120,31 @@ export async function connectWallet(): Promise<string> {
 export async function disconnectWallet(): Promise<void> {
   try {
     if (!isTestMode && typeof window !== 'undefined' && window.arweaveWallet) {
-      await window.arweaveWallet.disconnect();
+      try {
+        // Wrap disconnect in try-catch for message channel errors
+        await Promise.race([
+          window.arweaveWallet.disconnect(),
+          new Promise<void>((resolve) => setTimeout(resolve, 2000)) // Timeout after 2 seconds
+        ]);
+      } catch (err: unknown) {
+        // Handle message channel errors specifically
+        if (err instanceof Error && err.message && (
+            err.message.includes('message channel closed') || 
+            err.message.includes('asynchronous response')
+        )) {
+          console.error('ArConnect message channel error during disconnect:', err);
+          // Don't throw the error for disconnect - just log it
+        } else {
+          console.error('Error during disconnect:', err);
+        }
+      }
     }
+    
     mockUserAddress = '';
     console.log('Wallet disconnected');
   } catch (error) {
     console.error('Error disconnecting wallet:', error);
-    throw error;
+    // Don't throw error for disconnection issues
   }
 }
 
@@ -368,10 +406,22 @@ export async function fetchArweaveBalance(address: string): Promise<string> {
         try {
           // Set timeout to prevent indefinite waiting
           const balancePromise = async () => {
-            const addressToCheck = address || await window.arweaveWallet.getActiveAddress();
-            const winstonBalance = await arweave.wallets.getBalance(addressToCheck);
-            const arBalance = arweave.ar.winstonToAr(winstonBalance);
-            return arBalance;
+            try {
+              const addressToCheck = address || await window.arweaveWallet.getActiveAddress();
+              const winstonBalance = await arweave.wallets.getBalance(addressToCheck);
+              const arBalance = arweave.ar.winstonToAr(winstonBalance);
+              return arBalance;
+            } catch (innerErr: unknown) {
+              // Handle message channel errors specifically
+              if (innerErr instanceof Error && innerErr.message && (
+                  innerErr.message.includes('message channel closed') || 
+                  innerErr.message.includes('asynchronous response')
+              )) {
+                console.error('ArConnect message channel error during balance fetch:', innerErr);
+                throw new Error('Communication with ArConnect failed');
+              }
+              throw innerErr;
+            }
           };
           
           // Set a timeout for balance fetch
