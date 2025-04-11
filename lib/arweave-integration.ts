@@ -42,6 +42,9 @@ export function getTestMode(): boolean {
  * @returns Connected wallet address
  */
 export async function connectWallet(): Promise<string> {
+  // Add a small delay to prevent UI lockup
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
   try {
     if (isTestMode) {
       // Generate mock user address for test mode
@@ -52,7 +55,17 @@ export async function connectWallet(): Promise<string> {
       // Connect to real Arweave wallet
       if (typeof window !== 'undefined' && window.arweaveWallet) {
         try {
-          await window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
+          // Set timeout to prevent indefinite waiting if ArConnect extension freezes
+          const connectPromise = window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
+          
+          // Set a timeout for wallet connection
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Wallet connection timed out')), 5000);
+          });
+          
+          // Race the promises
+          await Promise.race([connectPromise, timeoutPromise]);
+          
           const address = await window.arweaveWallet.getActiveAddress();
           console.log('Connected to real wallet:', address);
           return address;
@@ -343,6 +356,9 @@ async function fetchGameHistoryReal(address: string): Promise<any[]> {
  * @returns Balance in AR
  */
 export async function fetchArweaveBalance(address: string): Promise<string> {
+  // Add a small delay to prevent UI freezing
+  await new Promise(resolve => setTimeout(resolve, 10));
+  
   try {
     if (isTestMode) {
       return '100.0'; // Return mock balance for test mode
@@ -350,10 +366,21 @@ export async function fetchArweaveBalance(address: string): Promise<string> {
       // For real wallet mode, fetch actual balance
       if (typeof window !== 'undefined' && window.arweaveWallet) {
         try {
-          const addressToCheck = address || await window.arweaveWallet.getActiveAddress();
-          const winstonBalance = await arweave.wallets.getBalance(addressToCheck);
-          const arBalance = arweave.ar.winstonToAr(winstonBalance);
-          return arBalance;
+          // Set timeout to prevent indefinite waiting
+          const balancePromise = async () => {
+            const addressToCheck = address || await window.arweaveWallet.getActiveAddress();
+            const winstonBalance = await arweave.wallets.getBalance(addressToCheck);
+            const arBalance = arweave.ar.winstonToAr(winstonBalance);
+            return arBalance;
+          };
+          
+          // Set a timeout for balance fetch
+          const timeoutPromise = new Promise<string>((resolve) => {
+            setTimeout(() => resolve('0.0'), 3000);
+          });
+          
+          // Race the promises
+          return await Promise.race([balancePromise(), timeoutPromise]);
         } catch (error) {
           console.error('Error fetching real balance:', error);
           return '0.0';

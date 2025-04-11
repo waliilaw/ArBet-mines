@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Image from "next/image"
 import { useArweaveWallet } from "@/hooks/use-arweave-wallet"
 import { generateMines, verifyGameResult } from "@/lib/ao-randomness"
-import { placeBet, claimWinnings, fetchArweaveBalance } from "@/lib/arweave-integration"
+import { placeBet, claimWinnings, fetchArweaveBalance, setTestMode } from "@/lib/arweave-integration"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { SoundToggle, useSoundEffects } from "./sound-toggle"
+import { Slider } from "@/components/ui/slider"
 
 // Game constants
 const GRID_SIZE = 5
@@ -43,6 +44,7 @@ export default function MinesGame() {
   const [transactionLoading, setTransactionLoading] = useState(false)
   const [currentGameId, setCurrentGameId] = useState<string>("")
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [isConnecting, setIsConnecting] = useState(false)
 
   // Sound effects
   const { playGemSound, playMineSound } = useSoundEffects(soundEnabled)
@@ -343,7 +345,7 @@ export default function MinesGame() {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="bet-amount" className="text-white mb-1 block">
+                <Label htmlFor="bet-amount" className="text-white mb-1 block font-pixel text-sm">
                   Bet Amount (AR)
                 </Label>
                 <Input
@@ -380,7 +382,8 @@ export default function MinesGame() {
                   checked={isTestMode}
                   onCheckedChange={setIsTestMode}
                   disabled={gameState === "playing" || transactionLoading}
-                />
+             className="rounded-md bg-black"  
+               />
                 <Label htmlFor="test-mode" className="text-white">
                   Test Mode
                 </Label>
@@ -446,8 +449,24 @@ export default function MinesGame() {
 
           <div className="space-y-2">
             {!connected && !isTestMode ? (
-              <Button onClick={connect} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-pixel" disabled={transactionLoading}>
-                Connect Wallet
+              <Button 
+                onClick={async () => {
+                  if (isConnecting) return; // Prevent multiple clicks
+                  setIsConnecting(true);
+                  try {
+                    await connect();
+                  } catch (err) {
+                    console.error("Failed to connect wallet:", err);
+                    // Force a fallback to test mode if connection fails
+                    setIsTestMode(true);
+                  } finally {
+                    setIsConnecting(false);
+                  }
+                }} 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-pixel" 
+                disabled={transactionLoading || isConnecting}
+              >
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
               </Button>
             ) : (
               <>
@@ -497,8 +516,8 @@ export default function MinesGame() {
                     <Image 
                       src="/green-image.png" 
                       alt="Gem" 
-                      width={40} 
-                      height={40} 
+                      width={80} 
+                      height={80} 
                       className="pixelated-image" 
                     />
                   </div>
@@ -509,8 +528,8 @@ export default function MinesGame() {
                     <Image 
                       src="/red-image.png" 
                       alt="Mine" 
-                      width={40} 
-                      height={40} 
+                      width={80} 
+                      height={80} 
                       className="pixelated-image" 
                     />
                   </div>

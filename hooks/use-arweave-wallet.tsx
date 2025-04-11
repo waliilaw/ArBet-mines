@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "@/components/ui/use-toast"
 import { 
   connectWallet,
   disconnectWallet,
   fetchArweaveBalance,
-  getTestMode
+  getTestMode,
+  setTestMode
 } from "@/lib/arweave-integration"
 
 /**
@@ -18,27 +19,41 @@ export function useArweaveWallet() {
   const [address, setAddress] = useState("")
   const [balance, setBalance] = useState("0")
   const [isTestMode, setIsTestMode] = useState(true)
+  const connectingRef = useRef(false) // Use ref to prevent race conditions
 
   // Check if window is defined (browser environment)
   const isClient = typeof window !== "undefined"
 
-  // Update test mode state
+  // Update test mode state without causing re-renders
   useEffect(() => {
-    setIsTestMode(getTestMode());
+    const currentTestMode = getTestMode();
+    if (isTestMode !== currentTestMode) {
+      setIsTestMode(currentTestMode);
+    }
   }, []);
 
   // Connect to Arweave wallet (supports both test and real modes)
   const connect = useCallback(async () => {
+    if (connectingRef.current) return; // Prevent duplicate calls
+    connectingRef.current = true;
+    
     try {
       const walletAddress = await connectWallet();
       setAddress(walletAddress);
       setConnected(true);
 
-      // Fetch balance
-      const walletBalance = await fetchArweaveBalance(walletAddress);
-      setBalance(walletBalance);
+      // Only fetch balance if we have an address
+      if (walletAddress) {
+        try {
+          const walletBalance = await fetchArweaveBalance(walletAddress);
+          setBalance(walletBalance);
+        } catch (balanceError) {
+          console.error("Error fetching balance:", balanceError);
+          // Don't throw - just log the error
+        }
+      }
 
-      const mode = isTestMode ? "Test" : "Real";
+      const mode = getTestMode() ? "Test" : "Real"; // Use function directly to avoid stale state
       toast({
         title: `${mode} Wallet Connected`,
         description: `Connected to ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
@@ -50,8 +65,13 @@ export function useArweaveWallet() {
         description: error instanceof Error ? error.message : "Failed to connect wallet",
         variant: "destructive",
       });
+      // Auto-switch to test mode on error
+      setTestMode(true);
+      setIsTestMode(true);
+    } finally {
+      connectingRef.current = false;
     }
-  }, [isTestMode]);
+  }, []); // Remove isTestMode dependency to avoid extra re-renders
 
   // Disconnect from wallet
   const disconnect = useCallback(async () => {
@@ -77,6 +97,8 @@ export function useArweaveWallet() {
 
   // Fetch wallet balance
   const fetchBalance = useCallback(async (walletAddress: string) => {
+    if (!walletAddress) return;
+    
     try {
       const walletBalance = await fetchArweaveBalance(walletAddress);
       setBalance(walletBalance);
@@ -84,15 +106,6 @@ export function useArweaveWallet() {
       console.error("Error fetching balance:", error);
     }
   }, []);
-
-  // Refresh wallet state when test mode changes
-  useEffect(() => {
-    setIsTestMode(getTestMode());
-    if (connected) {
-      // Reconnect to refresh state
-      disconnect().then(() => connect());
-    }
-  }, [connected, connect, disconnect]);
 
   return {
     connected,
