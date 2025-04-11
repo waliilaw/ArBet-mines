@@ -13,8 +13,9 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  distDir: 'out',
+  // Only use 'export' for production builds
+  // output is dynamically set below based on NODE_ENV
+  distDir: '.next',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -29,7 +30,7 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     // Fix for the missing module issues
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -51,6 +52,13 @@ const nextConfig = {
     
     return config;
   },
+}
+
+// Set the output mode based on the environment
+// Use 'export' only for production builds
+if (process.env.NODE_ENV === 'production') {
+  nextConfig.output = 'export';
+  nextConfig.distDir = 'out';
 }
 
 if (userConfig) {

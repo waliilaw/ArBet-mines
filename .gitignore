@@ -9,7 +9,7 @@
 # testing
 /coverage
 
-/contracts/node_modules
+
 
 # next.js
 /.next/

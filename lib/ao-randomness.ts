@@ -3,9 +3,6 @@
  * No real AO or Arweave interactions are made
  */
 
-// Mock process ID
-const AO_PROCESS_ID = process.env.NEXT_PUBLIC_AO_PROCESS_ID || 'kHWu_t4g9PFA2u_V9_w-JF8PjbH0YX-3e6WAvWhB2T0';
-
 /**
  * Generates random mine positions (mock implementation)
  * @param totalTiles Total number of tiles in the game

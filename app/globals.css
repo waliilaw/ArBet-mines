@@ -125,3 +125,44 @@
 .mine-tile.revealed.mine {
   background-color: #ff6b6b;
 }
+
+/* Toast styling */
+.pixelated-toast {
+  font-family: 'Press Start 2P', monospace !important;
+  image-rendering: pixelated !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.pixelated-toast div {
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.pixelated-toast h2 {
+  font-family: 'Press Start 2P', monospace !important;
+  font-size: 1em !important;
+  letter-spacing: -0.5px;
+  margin-bottom: 10px !important;
+  color: #fde047 !important; /* Yellow text */
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Button styles */
+.pixel-button {
+  image-rendering: pixelated;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  border: 2px solid;
+  transition: all 0.1s ease;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.pixel-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.pixel-button:active {
+  transform: translateY(0);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
+}
