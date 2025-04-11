@@ -92,7 +92,7 @@ export function useArweaveWallet() {
       // Reconnect to refresh state
       disconnect().then(() => connect());
     }
-  }, [getTestMode, connected, connect, disconnect]);
+  }, [connected, connect, disconnect]);
 
   return {
     connected,
