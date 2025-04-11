@@ -71,7 +71,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/arweave": "^1.11.0",
     "@types/node": "^20.11.27",
     "@types/react": "^18.2.65",
     "@types/react-dom": "^18.2.22",
