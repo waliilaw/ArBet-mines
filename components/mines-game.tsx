@@ -674,7 +674,7 @@ export default function MinesGame() {
                 imageRendering: "pixelated"
               }}
             >
-              {isConnecting ? "Connecting..." : "Connect Wander Wallet"}
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
             </Button>
             
             {walletError === 'Wander wallet extension not found' && (
