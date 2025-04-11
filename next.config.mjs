@@ -29,6 +29,15 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  webpack: (config, { isServer }) => {
+    // Fix for the missing module issues
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '../../shared/lib/constants': false,
+      '../../lib/picocolors': false
+    };
+    return config;
+  },
 }
 
 if (userConfig) {
