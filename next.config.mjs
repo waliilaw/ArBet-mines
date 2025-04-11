@@ -36,6 +36,19 @@ const nextConfig = {
       '../../shared/lib/constants': false,
       '../../lib/picocolors': false
     };
+    
+    // Prevent continuous rebuilds
+    if (!isServer) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**'
+        ]
+      };
+    }
+    
     return config;
   },
 }
