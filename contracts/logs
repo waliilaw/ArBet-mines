@@ -1,0 +1,7 @@
+[4/11/2025, 10:01:14 AM] GET /mint/gcjFxnHYpdXdXfRnow2xH_WMTnMlfM8Cqa-GazgPhEo/1000000000000 200 5ms 
+[4/11/2025, 10:01:14 AM] GET /tx_anchor 200 1ms 
+[4/11/2025, 10:01:14 AM] GET /price/5430 200 0ms 
+[4/11/2025, 10:01:14 AM] POST /tx 200 21ms 
+[4/11/2025, 10:01:14 AM] GET /tx_anchor 200 1ms 
+[4/11/2025, 10:01:14 AM] GET /price/132 200 0ms 
+[4/11/2025, 10:01:14 AM] POST /tx 200 8ms 

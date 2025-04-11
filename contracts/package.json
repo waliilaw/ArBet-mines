@@ -1,0 +1,13 @@
+{
+  "name": "mines-game-contract-deployment",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy-local": "node deploy-local.js"
+  },
+  "dependencies": {
+    "arlocal": "^1.1.60",
+    "arweave": "^1.14.4",
+    "redstone-smartweave": "^0.5.7"
+  }
+} 
