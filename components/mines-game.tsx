@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { useArweaveWallet } from "@/hooks/use-arweave-wallet"
 import { generateMines, verifyGameResult } from "@/lib/ao-randomness"
 import { placeBet, claimWinnings, fetchArweaveBalance } from "@/lib/arweave-integration"
@@ -10,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
+import { SoundToggle, useSoundEffects } from "./sound-toggle"
 
 // Game constants
 const GRID_SIZE = 5
@@ -40,6 +42,10 @@ export default function MinesGame() {
   const [minePositions, setMinePositions] = useState<number[]>([])
   const [transactionLoading, setTransactionLoading] = useState(false)
   const [currentGameId, setCurrentGameId] = useState<string>("")
+  const [soundEnabled, setSoundEnabled] = useState(true)
+
+  // Sound effects
+  const { playGemSound, playMineSound } = useSoundEffects(soundEnabled)
 
   // Arweave wallet integration
   const { connected, address, balance, connect, disconnect } = useArweaveWallet()
@@ -194,6 +200,9 @@ export default function MinesGame() {
     if (clickedTile.state !== "hidden") return
 
     if (clickedTile.isMine) {
+      // Play mine sound
+      playMineSound();
+      
       // Game over - hit a mine
       const updatedTiles: Tile[] = tiles.map((tile) => {
         if (tile.id === tileId) {
@@ -213,6 +222,9 @@ export default function MinesGame() {
         variant: "destructive",
       })
     } else {
+      // Play gem sound
+      playGemSound();
+      
       // Revealed a safe tile
       const newRevealedCount = revealedCount + 1
       setRevealedCount(newRevealedCount)
@@ -327,7 +339,7 @@ export default function MinesGame() {
         {/* Game controls */}
         <div className="flex flex-col gap-4 w-full md:w-1/3">
           <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4 pixel-font">GAME SETTINGS</h2>
+            <h2 className="text-xl font-bold text-white mb-4 font-pixel">GAME SETTINGS</h2>
 
             <div className="space-y-4">
               <div>
@@ -373,11 +385,18 @@ export default function MinesGame() {
                   Test Mode
                 </Label>
               </div>
+
+              <div className="flex justify-between items-center">
+                <Label htmlFor="sound-toggle" className="text-white">
+                  Sound Effects:
+                </Label>
+                <SoundToggle onToggle={setSoundEnabled} />
+              </div>
             </div>
           </div>
 
           <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
-            <h2 className="text-xl font-bold text-white mb-4 pixel-font">GAME INFO</h2>
+            <h2 className="text-xl font-bold text-white mb-4 font-pixel">GAME INFO</h2>
 
             <div className="space-y-2">
               <div className="flex justify-between">
@@ -427,7 +446,7 @@ export default function MinesGame() {
 
           <div className="space-y-2">
             {!connected && !isTestMode ? (
-              <Button onClick={connect} className="w-full bg-purple-600 hover:bg-purple-700 text-white pixel-button" disabled={transactionLoading}>
+              <Button onClick={connect} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-pixel" disabled={transactionLoading}>
                 Connect Wallet
               </Button>
             ) : (
@@ -435,7 +454,7 @@ export default function MinesGame() {
                 <Button
                   onClick={gameState === "playing" ? handleCashout : startGame}
                   className={cn(
-                    "w-full pixel-button",
+                    "w-full font-pixel",
                     gameState === "playing" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700",
                   )}
                   disabled={(gameState === "won" || gameState === "lost") || transactionLoading}
@@ -448,7 +467,7 @@ export default function MinesGame() {
                 </Button>
 
                 {gameState !== "idle" && (
-                  <Button onClick={resetGame} className="w-full bg-red-600 hover:bg-red-700 text-white pixel-button" disabled={transactionLoading}>
+                  <Button onClick={resetGame} className="w-full bg-red-600 hover:bg-red-700 text-white font-pixel" disabled={transactionLoading}>
                     NEW GAME
                   </Button>
                 )}
@@ -466,20 +485,37 @@ export default function MinesGame() {
                 onClick={() => handleTileClick(tile.id)}
                 disabled={gameState !== "playing" || tile.state !== "hidden" || transactionLoading}
                 className={cn(
-                  "aspect-square pixel-tile relative flex items-center justify-center",
+                  "aspect-square relative flex items-center justify-center mine-tile",
                   tile.state === "hidden" && "bg-gray-700 hover:bg-gray-600",
-                  tile.state === "diamond" && "bg-blue-600",
-                  tile.state === "mine" && "bg-red-600",
-                  "border-4",
-                  tile.state === "hidden" && "border-gray-600",
-                  tile.state === "diamond" && "border-blue-500",
-                  tile.state === "mine" && "border-red-500",
-                  transactionLoading && "opacity-50",
-                  "transition-colors duration-200",
+                  tile.state === "diamond" && "revealed",
+                  tile.state === "mine" && "revealed mine",
+                  transactionLoading && "opacity-50"
                 )}
               >
-                {tile.state === "diamond" && <div className="pixel-diamond"></div>}
-                {tile.state === "mine" && <div className="pixel-mine"></div>}
+                {tile.state === "diamond" && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Image 
+                      src="/green-image.png" 
+                      alt="Gem" 
+                      width={40} 
+                      height={40} 
+                      className="pixelated-image" 
+                    />
+                  </div>
+                )}
+                
+                {tile.state === "mine" && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Image 
+                      src="/red-image.png" 
+                      alt="Mine" 
+                      width={40} 
+                      height={40} 
+                      className="pixelated-image" 
+                    />
+                  </div>
+                )}
+                
                 {isTestMode && tile.isMine && tile.state === "hidden" && (
                   <div className="absolute inset-0 flex items-center justify-center opacity-30">
                     <div className="w-2 h-2 bg-red-500 rounded-full"></div>

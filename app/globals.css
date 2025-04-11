@@ -72,6 +72,18 @@
   letter-spacing: -0.5px;
 }
 
+/* Pixelated images */
+.pixelated-image {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transform: scale(1.0);
+  transition: transform 0.2s ease;
+}
+
+.pixelated-image:hover {
+  transform: scale(1.1);
+}
+
 /* Game board styling */
 .mines-grid {
   display: grid;
