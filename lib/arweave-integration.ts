@@ -52,54 +52,64 @@ export async function connectWallet(): Promise<string> {
       console.log('Connected to mock wallet:', mockUserAddress);
       return mockUserAddress;
     } else {
-      // Connect to real Arweave wallet
-      if (typeof window !== 'undefined' && window.arweaveWallet) {
-        try {
-          // Wrap ArConnect operations in a custom try-catch to handle message channel errors
-          const safeArConnectOperation = async () => {
-            try {
-              // Set timeout to prevent indefinite waiting if ArConnect extension freezes
-              const connectPromise = window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
-              
-              // Set a timeout for wallet connection
-              const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => reject(new Error('Wallet connection timed out')), 5000);
-              });
-              
-              // Race the promises
-              await Promise.race([connectPromise, timeoutPromise]);
-              
-              // Small delay to ensure channel has time to process
-              await new Promise(resolve => setTimeout(resolve, 100));
-              
-              const address = await window.arweaveWallet.getActiveAddress();
-              console.log('Connected to real wallet:', address);
-              return address;
-            } catch (innerErr: unknown) {
-              // Handle message channel errors specifically
-              if (innerErr instanceof Error && innerErr.message && (
-                  innerErr.message.includes('message channel closed') || 
-                  innerErr.message.includes('asynchronous response')
-              )) {
-                console.error('ArConnect message channel error:', innerErr);
-                throw new Error('ArConnect extension communication error. Please refresh the page and try again.');
+      // Check if ArConnect is installed
+      if (typeof window !== 'undefined') {
+        // Check for ArConnect or WonderWallet
+        const hasArConnect = window.arweaveWallet !== undefined;
+        
+        console.log('ArConnect detected:', hasArConnect);
+        
+        if (hasArConnect) {
+          try {
+            // Wrap ArConnect operations in a custom try-catch to handle message channel errors
+            const safeArConnectOperation = async () => {
+              try {
+                console.log('Attempting to connect to ArConnect...');
+                
+                // Set timeout to prevent indefinite waiting if ArConnect extension freezes
+                const connectPromise = window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION', 'DISPATCH']);
+                
+                // Set a timeout for wallet connection
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                  setTimeout(() => reject(new Error('Wallet connection timed out')), 5000);
+                });
+                
+                // Race the promises
+                await Promise.race([connectPromise, timeoutPromise]);
+                
+                // Small delay to ensure channel has time to process
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const address = await window.arweaveWallet.getActiveAddress();
+                console.log('Connected to real wallet:', address);
+                return address;
+              } catch (innerErr: unknown) {
+                // Handle message channel errors specifically
+                console.error('Error in ArConnect connection attempt:', innerErr);
+                if (innerErr instanceof Error && innerErr.message && (
+                    innerErr.message.includes('message channel closed') || 
+                    innerErr.message.includes('asynchronous response')
+                )) {
+                  console.error('ArConnect message channel error:', innerErr);
+                  throw new Error('ArConnect extension communication error. Please refresh the page and try again.');
+                }
+                throw innerErr;
               }
-              throw innerErr;
-            }
-          };
-          
-          return await safeArConnectOperation();
-        } catch (err) {
-          console.error('Error connecting to ArConnect:', err);
-          // Fallback to test mode if there's an issue with ArConnect
-          console.log('Falling back to test mode due to ArConnect error');
-          setTestMode(true);
-          mockUserAddress = `mock_user_${Math.random().toString(36).substring(2, 9)}`;
-          return mockUserAddress;
+            };
+            
+            return await safeArConnectOperation();
+          } catch (err) {
+            console.error('Error connecting to ArConnect:', err);
+            // Show error to user instead of silently fallback to test mode
+            throw new Error('Failed to connect to ArConnect. Please make sure it is installed and unlocked.');
+          }
+        } else {
+          console.error('ArConnect not found - please install it first');
+          throw new Error('ArConnect not found. Please install the ArConnect extension to connect a real wallet.');
         }
       } else {
-        console.error('ArConnect not found - falling back to test mode');
-        // Fallback to test mode if ArConnect is not available
+        console.error('Window not defined - falling back to test mode');
+        // Fallback to test mode if window is not defined (SSR context)
         setTestMode(true);
         mockUserAddress = `mock_user_${Math.random().toString(36).substring(2, 9)}`;
         return mockUserAddress;
@@ -107,10 +117,7 @@ export async function connectWallet(): Promise<string> {
     }
   } catch (error) {
     console.error('Error connecting to wallet:', error);
-    // Fallback to test mode on any error
-    setTestMode(true);
-    mockUserAddress = `mock_user_${Math.random().toString(36).substring(2, 9)}`;
-    return mockUserAddress;
+    throw error; // Don't automatically fallback to test mode
   }
 }
 

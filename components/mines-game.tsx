@@ -218,11 +218,18 @@ export default function MinesGame() {
       setTiles(updatedTiles)
       setGameState("lost")
 
+      // Show a more prominent toast for losing
       toast({
         title: "BOOM! You hit a mine!",
         description: `You lost ${betAmount} AR`,
         variant: "destructive",
+        duration: 5000, // Show longer
       })
+      
+      // Alert as well for better visibility
+      setTimeout(() => {
+        alert(`Game Over! You hit a mine and lost ${betAmount} AR`);
+      }, 500);
     } else {
       // Play gem sound
       playGemSound();
@@ -248,10 +255,11 @@ export default function MinesGame() {
       if (newRevealedCount === safeTiles) {
         setGameState("won")
         
+        const winAmount = (Number.parseFloat(betAmount) * newMultiplier).toFixed(4);
+        
         // Auto cashout on complete win
         if (!isTestMode && currentGameId) {
           try {
-            const winAmount = (Number.parseFloat(betAmount) * newMultiplier).toFixed(4);
             const revealedPositions = updatedTiles
               .filter(tile => tile.state === "diamond")
               .map(tile => tile.id);
@@ -262,10 +270,18 @@ export default function MinesGame() {
           }
         }
         
+        // Show a more prominent toast for winning
         toast({
-          title: "Congratulations!",
-          description: `You revealed all safe tiles! You won ${(Number.parseFloat(betAmount) * newMultiplier).toFixed(4)} AR`,
+          title: "🎉 Congratulations! 🎉",
+          description: `You revealed all safe tiles! You won ${winAmount} AR`,
+          variant: "default",
+          duration: 5000, // Show longer
         })
+        
+        // Alert as well for better visibility
+        setTimeout(() => {
+          alert(`Congratulations! You won ${winAmount} AR!`);
+        }, 500);
       }
     }
   }
@@ -284,17 +300,21 @@ export default function MinesGame() {
         .filter(tile => tile.state === "diamond")
         .map(tile => tile.id);
       
+      let txId = "";
+      
       if (!isTestMode && currentGameId) {
         // Verify game result using AO
         const isValid = await verifyGameResult(currentGameId, minePositions, revealedPositions);
         
         if (isValid) {
           // Claim winnings on Arweave
-          const txId = await claimWinnings(currentGameId, winAmount, revealedPositions);
+          txId = await claimWinnings(currentGameId, winAmount, revealedPositions);
           
+          // Display toast with transaction ID
           toast({
-            title: "Cashed out successfully!",
-            description: `You won ${winAmount} AR with a ${currentMultiplier}x multiplier!`,
+            title: "🎉 Cashed out successfully! 🎉",
+            description: `You won ${winAmount} AR with a ${currentMultiplier}x multiplier! Transaction ID: ${txId.substring(0, 8)}...`,
+            duration: 5000,
           });
         } else {
           toast({
@@ -307,8 +327,9 @@ export default function MinesGame() {
       } else {
         // Test mode just shows toast
         toast({
-          title: "Cashed out successfully!",
+          title: "🎉 Cashed out successfully! 🎉",
           description: `You won ${winAmount} AR with a ${currentMultiplier}x multiplier!`,
+          duration: 5000,
         });
       }
 
@@ -322,6 +343,11 @@ export default function MinesGame() {
 
       setTiles(updatedTiles);
       setGameState("won");
+      
+      // Show alert after a short delay for better visibility
+      setTimeout(() => {
+        alert(`Congratulations! You cashed out and won ${winAmount} AR!`);
+      }, 500);
       
     } catch (error) {
       console.error("Error cashing out:", error);
@@ -454,11 +480,28 @@ export default function MinesGame() {
                   if (isConnecting) return; // Prevent multiple clicks
                   setIsConnecting(true);
                   try {
+                    // Connect to wallet
                     await connect();
+                    toast({
+                      title: "Wallet connected",
+                      description: "Your Arweave wallet has been connected successfully.",
+                    });
+                    // Update the balance
+                    if (address) {
+                      await fetchArweaveBalance(address);
+                    }
                   } catch (err) {
                     console.error("Failed to connect wallet:", err);
-                    // Force a fallback to test mode if connection fails
-                    setIsTestMode(true);
+                    toast({
+                      title: "Connection failed",
+                      description: err instanceof Error ? err.message : "Failed to connect wallet",
+                      variant: "destructive",
+                    });
+                    // Only fallback to test mode if explicitly requested
+                    if (window.confirm("ArConnect extension not detected or failed to connect. Would you like to use test mode instead?")) {
+                      setTestMode(true);
+                      setIsTestMode(true);
+                    }
                   } finally {
                     setIsConnecting(false);
                   }
