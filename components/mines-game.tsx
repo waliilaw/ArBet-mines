@@ -44,7 +44,7 @@ export default function MinesGame() {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [tiles, setTiles] = useState<Tile[]>([])
   const [minesCount, setMinesCount] = useState(DEFAULT_MINES_COUNT)
-  const [betAmount, setBetAmount] = useState("0.1")
+  const [betAmount, setBetAmount] = useState("")
   const [currentMultiplier, setCurrentMultiplier] = useState(1)
   const [revealedCount, setRevealedCount] = useState(0)
   const [transactionLoading, setTransactionLoading] = useState(false)
@@ -234,21 +234,21 @@ export default function MinesGame() {
 
     try {
       setTransactionLoading(true);
-      
-      // Generate mine positions using AO randomness
-      const mines = await generateMines(TOTAL_TILES, minesCount)
 
-      // Create new tiles with mines
+    // Generate mine positions using AO randomness
+    const mines = await generateMines(TOTAL_TILES, minesCount)
+
+    // Create new tiles with mines
       const newTiles: Tile[] = Array.from({ length: TOTAL_TILES }, (_, id) => ({
-        id,
-        state: "hidden",
-        isMine: mines.includes(id),
-      }))
+      id,
+      state: "hidden",
+      isMine: mines.includes(id),
+    }))
 
-      setTiles(newTiles)
-      setGameState("playing")
-      setRevealedCount(0)
-      setCurrentMultiplier(1)
+    setTiles(newTiles)
+    setGameState("playing")
+    setRevealedCount(0)
+    setCurrentMultiplier(1)
 
       // Place bet on Arweave network
       try {
@@ -273,7 +273,7 @@ export default function MinesGame() {
         });
       } catch (error) {
         console.error("Error placing bet:", error);
-        toast({
+    toast({
           title: "ERROR PLACING BET",
           description: (
             <div className="font-pixel">
@@ -425,7 +425,7 @@ export default function MinesGame() {
           });
         } catch (error) {
           console.error("Error claiming complete win:", error);
-          toast({
+        toast({
             title: "CONGRATULATIONS!",
             description: (
               <div className="font-pixel">
@@ -478,11 +478,11 @@ export default function MinesGame() {
           return { ...tile, state: "diamond" as TileState }
         } else if (tile.isMine && tile.state === "hidden") {
           return { ...tile, state: "mine" as TileState }
-        }
-        return tile
-      })
-      
-      setTiles(updatedTiles)
+      }
+      return tile
+    })
+
+    setTiles(updatedTiles)
 
       try {
         // Claim winnings on Arweave
@@ -521,7 +521,7 @@ export default function MinesGame() {
           onClick={() => handleTileClick(tile.id)}
           disabled={gameState !== "playing" || tile.state !== "hidden" || transactionLoading}
           className={cn(
-            "aspect-square relative flex items-center justify-center mine-tile transition-all duration-200",
+            "aspect-square relative flex items-center justify-center mine-tile transition-all duration-200 ",
             tileStyles[tile.state],
             "hover:scale-105 active:scale-95",
             "pixelated-box",
@@ -533,7 +533,8 @@ export default function MinesGame() {
               ? "linear-gradient(45deg, rgba(0,0,0,0.1) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.1) 75%), linear-gradient(45deg, rgba(0,0,0,0.1) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.1) 75%)"
               : "none",
             backgroundSize: "4px 4px",
-            backgroundPosition: "0 0, 2px 2px"
+            backgroundPosition: "0 0, 2px 2px",
+            borderRadius: "15px"
           }}
         >
           {tile.state === "diamond" && (
@@ -541,8 +542,8 @@ export default function MinesGame() {
               <Image 
                 src="/green-image.png" 
                 alt="Gem" 
-                width={40} 
-                height={40} 
+                width={80} 
+                height={80} 
                 className="pixelated-image" 
               />
             </div>
@@ -553,8 +554,8 @@ export default function MinesGame() {
               <Image 
                 src="/red-image.png" 
                 alt="Mine" 
-                width={40} 
-                height={40} 
+                width={80} 
+                height={80} 
                 className="pixelated-image" 
               />
             </div>
@@ -566,89 +567,102 @@ export default function MinesGame() {
 
   // Memoize game controls
   const gameControls = useMemo(() => (
-    <div className="flex flex-col gap-4 w-full md:w-1/3">
-      <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
+        <div className="flex flex-col gap-4 w-full md:w-1/3">
+          <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
         <h2 className="text-xl font-bold text-white mb-4 font-pixel">GAME SETTINGS</h2>
 
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="bet-amount" className="text-white mb-1 block">
-              Bet Amount (AR)
-            </Label>
-            <Input
-              id="bet-amount"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={betAmount}
-              onChange={(e) => setBetAmount(e.target.value)}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="bet-amount" className="text-white mb-1 block">
+                  Bet Amount (AR)
+                </Label>
+                <Input
+                  id="bet-amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={betAmount}
+                  onChange={(e) => setBetAmount(e.target.value)}
               disabled={gameState === "playing" || transactionLoading}
-              className="bg-gray-700 text-white border-gray-600"
-            />
-          </div>
+                  className="bg-gray-700 text-white border-gray-600"
+                />
+              </div>
 
-          <div>
-            <Label htmlFor="mines-count" className="text-white mb-1 block">
-              Mines: {minesCount}
-            </Label>
-            <input
-              id="mines-count"
-              type="range"
-              min="1"
-              max="24"
-              value={minesCount}
-              onChange={(e) => setMinesCount(Number.parseInt(e.target.value))}
-              disabled={gameState === "playing" || transactionLoading}
-              className="w-full"
-            />
-          </div>
+              <div>
+                <Label htmlFor="mines-count" className="text-white mb-1 block">
+                  Mines: {minesCount}
+                </Label>
+                <div className="relative pt-1">
+                  <input
+                    id="mines-count"
+                    type="range"
+                    min="1"
+                    max="24"
+                    value={minesCount}
+                    onChange={(e) => setMinesCount(Number.parseInt(e.target.value))}
+                    disabled={gameState === "playing" || transactionLoading}
+                    className="w-full appearance-none h-4 rounded-lg bg-gray-800 border-2 border-gray-700 cursor-pointer"
+                    style={{
+                      backgroundImage: "repeating-linear-gradient(to right, #374151 0, #374151 4px, #1f2937 4px, #1f2937 8px)",
+                      backgroundSize: "8px 8px",
+                      imageRendering: "pixelated"
+                    }}
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 px-2 pt-1">
+                    <span>1</span>
+                    <span>8</span>
+                    <span>16</span>
+                    <span>24</span>
+                  </div>
+                </div>
+              </div>
 
           <div className="flex justify-between items-center">
             <Label htmlFor="sound-toggle" className="text-white">
               Sound Effects:
-            </Label>
+                </Label>
             <SoundToggle onToggle={setSoundEnabled} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
+          <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
         <h2 className="text-xl font-bold text-white mb-4 font-pixel">GAME INFO</h2>
 
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-400">Status:</span>
-            <span className="text-white font-bold">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Status:</span>
+                <span className="text-white font-bold">
               {transactionLoading 
                 ? "Processing..." 
                 : gameState === "idle"
-                  ? "Ready"
-                  : gameState === "playing"
-                    ? "Playing"
-                    : gameState === "won"
-                      ? "Won"
-                      : "Lost"}
-            </span>
-          </div>
+                    ? "Ready"
+                    : gameState === "playing"
+                      ? "Playing"
+                      : gameState === "won"
+                        ? "Won"
+                        : "Lost"}
+                </span>
+              </div>
 
-          <div className="flex justify-between">
-            <span className="text-gray-400">Multiplier:</span>
-            <span className="text-green-400 font-bold">{currentMultiplier.toFixed(2)}x</span>
-          </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Multiplier:</span>
+                <span className="text-green-400 font-bold">{currentMultiplier.toFixed(2)}x</span>
+              </div>
 
-          <div className="flex justify-between">
-            <span className="text-gray-400">Potential Win:</span>
-            <span className="text-yellow-400 font-bold">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Potential Win:</span>
+                <span className="text-yellow-400 font-bold">
               {(Number.parseFloat(betAmount) * currentMultiplier).toFixed(2)} AR
-            </span>
-          </div>
+                </span>
+              </div>
 
-          <div className="flex justify-between">
-            <span className="text-gray-400">Revealed:</span>
-            <span className="text-white font-bold">
-              {revealedCount} / {TOTAL_TILES - minesCount}
-            </span>
-          </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Revealed:</span>
+                <span className="text-white font-bold">
+                  {revealedCount} / {TOTAL_TILES - minesCount}
+                </span>
+              </div>
 
           {connected && (
             <div className="flex justify-between">
@@ -658,10 +672,10 @@ export default function MinesGame() {
               </span>
             </div>
           )}
-        </div>
-      </div>
+            </div>
+          </div>
 
-      <div className="space-y-2">
+          <div className="space-y-2">
         {!connected ? (
           <>
             <Button 
@@ -675,19 +689,19 @@ export default function MinesGame() {
               }}
             >
               {isConnecting ? "Connecting..." : "Connect Wallet"}
-            </Button>
+              </Button>
             
             {walletError === 'Wander wallet extension not found' && (
               <WalletNotFound />
             )}
           </>
-        ) : (
-          <>
-            <Button
-              onClick={gameState === "playing" ? handleCashout : startGame}
-              className={cn(
+            ) : (
+              <>
+                <Button
+                  onClick={gameState === "playing" ? handleCashout : startGame}
+                  className={cn(
                 "w-full font-pixel",
-                gameState === "playing" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700",
+                    gameState === "playing" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700",
                 "border-2",
                 gameState === "playing" ? "border-green-500" : "border-blue-500"
               )}
@@ -703,9 +717,9 @@ export default function MinesGame() {
                 : gameState === "playing" 
                   ? "CASHOUT" 
                   : "PLACE BET"}
-            </Button>
+                </Button>
 
-            {gameState !== "idle" && (
+                {gameState !== "idle" && (
               <Button 
                 onClick={resetGame} 
                 className="w-full font-pixel bg-red-600 hover:bg-red-700 text-white border-2 border-red-500"
@@ -716,13 +730,13 @@ export default function MinesGame() {
                   imageRendering: "pixelated"
                 }}
               >
-                NEW GAME
-              </Button>
+                    NEW GAME
+                  </Button>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </div>
   ), [
     connected, isConnecting, gameState, transactionLoading, 
     betAmount, minesCount, currentMultiplier, revealedCount, balance,
@@ -833,7 +847,7 @@ export default function MinesGame() {
           <div className="w-full md:w-2/3">
             <div className="bg-gray-900 p-4 rounded-lg border-2 border-gray-700">
               {gameBoard}
-            </div>
+                  </div>
           </div>
         </div>
       )}
