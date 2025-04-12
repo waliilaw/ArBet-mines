@@ -124,6 +124,51 @@ The AO Process (`contracts/mines-game-ao-process.lua`) provides:
 - Game result verification
 - Trustless gameplay mechanics
 
+## AO Process Integration
+
+This project uses an AO process for secure randomness generation in the mines game. The AO process is written in Lua and is responsible for:
+
+1. Generating random mine positions
+2. Verifying game results
+
+### Deploying the AO Process
+
+1. Make sure you have the AO CLI installed:
+```bash
+npm install -g @permaweb/ao
+```
+
+2. Deploy the AO process:
+```bash
+pnpm deploy:ao
+```
+
+3. Note the process ID from the terminal output
+
+4. Update the `.env.local` file with your process ID:
+```
+NEXT_PUBLIC_AO_PROCESS_ID=YOUR_AO_PROCESS_ID_HERE
+```
+
+### Testing the AO Process
+
+You can test the AO process directly using the AO CLI:
+
+```bash
+ao message YOUR_AO_PROCESS_ID --data '{}' --tags Action=GetRandomness --tags Range=25 --tags Count=5
+```
+
+This should return a JSON response with random positions for mines.
+
+## How the AO Integration Works
+
+1. When a game starts, the frontend sends a message to the AO process requesting random positions
+2. The AO process generates truly random mine positions using the Arweave blockchain's entropy
+3. The positions are returned to the frontend and used to place mines in the game
+4. When verifying game results, the AO process confirms the revealed positions don't contain mines
+
+The integration between the frontend and AO process is handled in `lib/ao-randomness.ts`.
+
 ## Production Deployment
 
 To deploy to production:

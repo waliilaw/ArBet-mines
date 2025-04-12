@@ -235,24 +235,19 @@ export default function MinesGame() {
     try {
       setTransactionLoading(true);
 
-    // Generate mine positions using AO randomness
-    const mines = await generateMines(TOTAL_TILES, minesCount)
-
-    // Create new tiles with mines
-      const newTiles: Tile[] = Array.from({ length: TOTAL_TILES }, (_, id) => ({
-      id,
-      state: "hidden",
-      isMine: mines.includes(id),
-    }))
-
-    setTiles(newTiles)
-    setGameState("playing")
-    setRevealedCount(0)
-    setCurrentMultiplier(1)
-
-      // Place bet on Arweave network
+      // Generate mine positions using AO randomness
+      let gameId = "";
+      let mines: number[] = [];
+      
       try {
-        const { txId, gameId } = await placeBet(betAmount, minesCount);
+        // Place bet on Arweave network first
+        const betResult = await placeBet(betAmount, minesCount);
+        gameId = betResult.gameId;
+        
+        // Then get randomness from AO process
+        mines = await generateMines(TOTAL_TILES, minesCount);
+        
+        // Store the game ID for later verification
         setCurrentGameId(gameId);
         
         toast({
@@ -260,7 +255,7 @@ export default function MinesGame() {
           description: (
             <div className="font-pixel">
               <div className="bg-blue-900 p-2 rounded border-2 border-blue-700 mb-2">
-                <span className="text-yellow-400">Transaction:</span> {txId.substring(0, 8)}...
+                <span className="text-yellow-400">Transaction:</span> {betResult.txId.substring(0, 8)}...
               </div>
             </div>
           ),
@@ -272,13 +267,13 @@ export default function MinesGame() {
           },
         });
       } catch (error) {
-        console.error("Error placing bet:", error);
-    toast({
-          title: "ERROR PLACING BET",
+        console.error("Error starting game:", error);
+        toast({
+          title: "ERROR STARTING GAME",
           description: (
             <div className="font-pixel">
               <div className="bg-red-900 p-2 rounded border-2 border-red-700">
-                <span>Failed to place bet on Arweave</span>
+                <span>Failed to get randomness or place bet</span>
               </div>
             </div>
           ),
@@ -290,10 +285,22 @@ export default function MinesGame() {
             background: "linear-gradient(to bottom, #1f2937, #111827)",
           },
         });
-        // Reset the game since bet failed
         resetGame();
+        setTransactionLoading(false);
         return;
       }
+
+      // Create new tiles with mines
+      const newTiles: Tile[] = Array.from({ length: TOTAL_TILES }, (_, id) => ({
+        id,
+        state: "hidden",
+        isMine: mines.includes(id),
+      }));
+
+      setTiles(newTiles);
+      setGameState("playing");
+      setRevealedCount(0);
+      setCurrentMultiplier(1);
 
       toast({
         title: "GAME STARTED!",
@@ -314,7 +321,7 @@ export default function MinesGame() {
           boxShadow: "0 4px 0 rgba(0,0,0,0.2)",
           background: "linear-gradient(to bottom, #1f2937, #111827)",
         },
-      })
+      });
     } catch (error) {
       console.error("Error starting game:", error);
       toast({
