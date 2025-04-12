@@ -1,6 +1,7 @@
 -- AO Process for Mines Game Randomness
 -- This process handles random number generation for the mines game
-
+Name = "ArBet"
+Owner = "Z_DbM70oALkWPMmktJiikV1uJcTvBXyKgFTdN3sqnW0"
 -- State initialization
 if not Handlers.utils then
   Handlers.utils = {}
